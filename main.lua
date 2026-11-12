@@ -149,6 +149,17 @@ function Zlibrary:addToMainMenu(menu_items)
                                 Config.setSkipOpenBookPrompt(not Config.getSkipOpenBookPrompt())
                             end,
                         }, {
+                            -- Applies to EPUB downloads only. The converted book is saved as
+                            -- "<name>.kepub.epub" and the plain EPUB is not kept.
+                            text = T("Convert EPUB to KEPUB"),
+                            keep_menu_open = true,
+                            checked_func = function()
+                                return Config.getConvertToKepub()
+                            end,
+                            callback = function()
+                                Config.setConvertToKepub(not Config.getConvertToKepub())
+                            end,
+                        }, {
                             -- Named folders under the download directory; the post-download dialog
                             -- offers to file the book into one. Rebuilt on each open so it always
                             -- shows the current set. Greyed out when "Ask to open after download" is
@@ -1498,7 +1509,7 @@ function Zlibrary:displaySearchResults(initial_book_data_list, query_string)
     -- Seed the box with the query that produced this page: refining a search is far more common
     -- than starting an unrelated one, and an empty box throws that away.
     self.active_results_menu = Ui.createSearchResultsMenu(self.ui, query_string, menu_items, on_goto_page_handler, opts,
-        function() Ui.showSearchDialog(self, query_string) end,
+        function() Ui.showResultsActionsDialog(self, query_string) end,
         -- Holding a row downloads it without opening the detail view. downloadBook resolves the
         -- link from the id and hash a search result already carries, and ends by confirming, so
         -- this hands straight over -- asking here as well produced two dialogs in a row.

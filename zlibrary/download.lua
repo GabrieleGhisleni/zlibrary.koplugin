@@ -15,6 +15,7 @@ local Api = require("zlibrary.api")
 local AsyncHelper = require("zlibrary.async_helper")
 local Config = require("zlibrary.config")
 local Device = require("device")
+local Kepub = require("zlibrary.kepub")
 local ffiUtil = require("ffi/util")
 local NetworkMgr = require("ui/network/manager")
 local ReaderUI = require("apps/reader/readerui")
@@ -242,6 +243,9 @@ function Download.run(self, book)
 
     local attemptDownload
 
+    -- Only an EPUB can become a KEPUB; the choice is made once per download, up front.
+    local convert_to_kepub = Config.getConvertToKepub() and book_format:lower() == "epub"
+
     -- The child owns the socket, so it cannot drive the parent's progress bar. It does not need to:
     -- it is already writing the bytes to a file we know the name of. Watch that instead. Legal only
     -- because the dismissable run yields while it waits, so UIManager is live to run this.
@@ -290,9 +294,23 @@ function Download.run(self, book)
 
             -- No progress callback: it would run in this process and could not reach the parent's
             -- dialog. The parent watches the temp file instead.
-            return Api.downloadBook(link_result.download_link, target_filepath,
+            local download_result = Api.downloadBook(link_result.download_link, target_filepath,
                 user_session and user_session.user_id, user_session and user_session.user_key,
                 referer_url, nil)
+
+            -- Convert here, in the child, so the UI stays live and a tap can still cancel. On any
+            -- failure the plain EPUB stays where it is: the book is never lost to a conversion.
+            if download_result and download_result.success and convert_to_kepub then
+                local kepub_path = Kepub.targetPath(target_filepath)
+                local ok, convert_ok, convert_err = pcall(Kepub.convertFile, target_filepath, kepub_path)
+                if ok and convert_ok then
+                    os.remove(target_filepath)
+                    download_result.kepub_path = kepub_path
+                else
+                    download_result.kepub_error = tostring(ok and convert_err or convert_ok)
+                end
+            end
+            return download_result
         end, false) -- false: an invisible trap widget that swallows the dismissing tap
     end
 
@@ -308,6 +326,17 @@ function Download.run(self, book)
         local function on_success_download(api_result)
             Ui.closeMessage(loading_msg)
             if api_result and api_result.success then
+
+                -- The child may have replaced the EPUB with a KEPUB next to it: carry the new
+                -- name through the rest of this flow (open prompt, filing into a category).
+                if api_result.kepub_path then
+                    target_filepath = api_result.kepub_path
+                    local _, kepub_name = util.splitFilePathName(target_filepath)
+                    filename = kepub_name
+                elseif api_result.kepub_error then
+                    logger.warn("Zlibrary:downloadBook - KEPUB conversion failed: " .. api_result.kepub_error)
+                    Ui.showInfoMessage(T("Couldn't convert to KEPUB. The book was saved as EPUB."))
+                end
 
                 -- reset download quota cache
                 self:resetDownloadQuotaCache()
@@ -452,6 +481,17 @@ function Download.run(self, book)
                 if lfs.attributes(target_filepath, "modification") ~= target_before then
                     -- The rename beat the kill; the book is whole.
                     return on_success_download({ success = true })
+                end
+                -- Or the kill landed during the conversion, after the EPUB was finished: whichever
+                -- of the EPUB and the KEPUB is complete is a good book. The converter only renames
+                -- its output into place once it is whole, and removes the EPUB after that.
+                local kepub_path = convert_to_kepub and Kepub.targetPath(target_filepath)
+                if kepub_path and lfs.attributes(kepub_path, "mode") == "file"
+                    and not lfs.attributes(target_filepath, "mode") then
+                    return on_success_download({ success = true, kepub_path = kepub_path })
+                end
+                if kepub_path then
+                    pcall(os.remove, kepub_path .. ".converting")
                 end
                 Api.discardDownloadTempFile(target_filepath)
                 Ui.closeMessage(loading_msg)

@@ -994,6 +994,53 @@ function Ui.showSearchDialog(parent_zlibrary, def_input)
     dialog:onShowKeyboard()
 end
 
+-- The menu behind the results screen's magnifying glass. Re-ordering used to be three steps away
+-- (search icon, "Sort by", the full list, then search again); the two orders people reach for when
+-- a device is short on space are one tap here, and the result list is fetched again in that order.
+-- The order is the same stored setting the search dialog uses, so the two always agree.
+function Ui.showResultsActionsDialog(parent_zlibrary, query)
+    local dialog
+    local current = (Config.getSearchOrder() or {})[1]
+
+    local function sortRow(label, order_value)
+        local mark = (current == order_value) and "\u{2713} " or ""
+        return {{
+            text = mark .. label,
+            callback = function()
+                _closeAndUntrackDialog(dialog)
+                Config.saveSetting(Config.SETTINGS_SEARCH_ORDERS_KEY, { order_value })
+                parent_zlibrary:performSearch(query)
+            end,
+        }}
+    end
+
+    dialog = ButtonDialog:new{
+        title = string.format("%s: %s", T("Sort by"), Config.getSearchOrderName()),
+        title_align = "center",
+        buttons = {
+            sortRow(T("Smallest files first"), "filesizeA"),
+            sortRow(T("Largest files first"), "filesize"),
+            {{
+                text = T("More sort options…"),
+                callback = function()
+                    _closeAndUntrackDialog(dialog)
+                    Ui.showOrdersSelectionDialog(parent_zlibrary, function()
+                        parent_zlibrary:performSearch(query)
+                    end)
+                end,
+            }},
+            {{
+                text = T("New search"),
+                callback = function()
+                    _closeAndUntrackDialog(dialog)
+                    Ui.showSearchDialog(parent_zlibrary, query)
+                end,
+            }},
+        },
+    }
+    _showAndTrackDialog(dialog)
+end
+
 function Ui.createBookMenuItem(book_data, parent_zlibrary_instance, is_show_cover)
     local title_for_html = (type(book_data.title) == "string" and book_data.title) or T("Unknown Title")
     local title = util.htmlEntitiesToUtf8(title_for_html)

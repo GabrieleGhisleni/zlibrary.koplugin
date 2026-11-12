@@ -26,6 +26,8 @@ If you find this plugin helpful, please consider supporting its development. You
 *   Browse most popular and recommended books.
 *   Open your Z-library booklists and download the books in them.
 *   Download content directly to your device.
+*   **(Fork)** Convert EPUB downloads to KEPUB before saving them, for Kobo's native reader.
+*   **(Fork)** Re-order search results by file size from the results screen.
 
 
 ## Prerequisites
@@ -78,6 +80,12 @@ return {
 **Note:** Credentials set in the `zlibrary_credentials.lua` file will always take precedence over those set via the UI. The plugin loads these settings at startup.
 
 **Signing in with a session instead of a password:** `userId` and `userKey` are a ready-made session. Set both (or neither) and the plugin uses them as-is, so it never has to reach a login endpoint — useful when Z-library's sign-in is refusing valid credentials, as it has done more than once. Sign in to Z-library in a browser and copy the `remix_userid` and `remix_userkey` cookies into these two fields. No email or password is needed alongside them, and these sessions do not expire.
+
+## KEPUB conversion and size sorting (this fork)
+
+**Convert EPUB to KEPUB.** Under *Z-library → Settings*, turn on "Convert EPUB to KEPUB". Each EPUB you download is then rewritten as `<Title> - <Author>.kepub.epub` right after the download finishes, and the plain EPUB is not kept. The conversion wraps the text of each chapter in `koboSpan` elements and adds the `book-columns`/`book-inner` wrappers, the same structure `kepubify` produces, entirely inside the plugin (no extra binary needed). If anything goes wrong, the book is kept as a normal EPUB and you are told. Other formats are untouched. Because the zip container is written uncompressed (the EPUB `mimetype` entry must be stored, and the archive library chooses compression for the whole file), a KEPUB is larger than the EPUB it came from.
+
+**Sort by file size.** On the search results screen, tap the magnifying glass in the title bar. Choose "Smallest files first" or "Largest files first" and the search is run again in that order (the sort is done by Z-library, so it applies across all pages of results, not just the ones loaded). "More sort options…" opens the full list.
 
 ## Setup gesture (optional)
 

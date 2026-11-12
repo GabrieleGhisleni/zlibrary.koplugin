@@ -28,6 +28,7 @@ Config.SETTINGS_CATEGORIES_KEY = "zlibrary_categories"
 Config.SETTINGS_TURN_OFF_WIFI_AFTER_DOWNLOAD_KEY = "zlibrary_turn_off_wifi_after_download"
 Config.SETTINGS_SKIP_OPEN_BOOK_PROMPT_KEY = "zlibrary_skip_open_book_prompt"
 Config.SETTINGS_BROWSER_USER_AGENT_KEY = "zlibrary_browser_user_agent"
+Config.SETTINGS_CONVERT_TO_KEPUB_KEY = "zlibrary_convert_to_kepub"
 Config.SETTINGS_TIMEOUT_LOGIN_KEY = "zlibrary_timeout_login"
 Config.SETTINGS_TIMEOUT_SEARCH_KEY = "zlibrary_timeout_search"
 Config.SETTINGS_TIMEOUT_BOOK_DETAILS_KEY = "zlibrary_timeout_book_details"
@@ -1075,6 +1076,15 @@ end
 
 function Config.setTurnOffWifiAfterDownload(turn_off)
     Config.saveSetting(Config.SETTINGS_TURN_OFF_WIFI_AFTER_DOWNLOAD_KEY, turn_off)
+end
+
+-- Off by default: a KEPUB is only wanted on a Kobo, and it changes the file name (".kepub.epub").
+function Config.getConvertToKepub()
+    return Config.getSetting(Config.SETTINGS_CONVERT_TO_KEPUB_KEY, false) == true
+end
+
+function Config.setConvertToKepub(convert)
+    Config.saveSetting(Config.SETTINGS_CONVERT_TO_KEPUB_KEY, convert and true or false)
 end
 
 -- Off by default: the prompt is the only confirmation most people get that a download finished,
