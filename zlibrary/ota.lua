@@ -13,7 +13,7 @@ local DataStorage = require("datastorage")
 
 local Ota = {}
 
-local GITHUB_REPO = "ZlibraryKO/zlibrary.koplugin"
+local GITHUB_REPO = "GabrieleGhisleni/zlibrary.koplugin"
 local LATEST_RELEASE_URL = "https://api.github.com/repos/" .. GITHUB_REPO .. "/releases/latest"
 
 local current_ota_status_widget = nil
